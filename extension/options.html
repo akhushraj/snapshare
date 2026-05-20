@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SnapShare — Setup</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111827;
+      color: #f9fafb;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 20px;
+    }
+    .page { width: 600px; max-width: 100%; }
+
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { color: #9ca3af; font-size: 14px; margin-bottom: 36px; }
+
+    .card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: #374151;
+      color: #9ca3af;
+    }
+    .badge.ok  { background: #064e3b; color: #6ee7b7; }
+    .badge.err { background: #7f1d1d; color: #fca5a5; }
+
+    .card p { font-size: 13px; color: #9ca3af; line-height: 1.6; margin: 8px 0; }
+    .card ol, .card ul { font-size: 13px; color: #9ca3af; line-height: 1.8; padding-left: 20px; }
+    .card ol li, .card ul li { margin-bottom: 2px; }
+    code {
+      background: #111827;
+      border: 1px solid #374151;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #60a5fa;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.12s;
+      margin-top: 14px;
+    }
+    .btn-blue  { background: #2563eb; color: #fff; }
+    .btn-blue:hover  { background: #1d4ed8; }
+    .btn-red   { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+    .btn-red:hover   { background: #991b1b; }
+    .btn-gray  { background: #374151; color: #d1d5db; }
+    .btn-gray:hover  { background: #4b5563; }
+
+    #status-area {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-top: 14px;
+      min-height: 20px;
+    }
+    #status-area.ok  { color: #6ee7b7; }
+    #status-area.err { color: #fca5a5; }
+
+    .divider { width: 100%; height: 1px; background: #374151; margin: 16px 0; }
+
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    #account-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: #d1d5db;
+    }
+    #account-row img {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    #folder-info {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>SnapShare Setup</h1>
+  <p class="subtitle">One-time configuration to connect Google Drive for screenshot sharing.</p>
+
+  <!-- Step 1: Client ID -->
+  <div class="card">
+    <h2>
+      Step 1 — Google Cloud OAuth
+      <span class="badge" id="badge-clientid">required</span>
+    </h2>
+    <p>SnapShare needs an OAuth Client ID to securely access your Google Drive. This is free and takes ~3 minutes.</p>
+
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> → create or select a project.</li>
+      <li>Enable the <strong>Google Drive API</strong>: APIs &amp; Services → Enable APIs → search "Drive API".</li>
+      <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth Client ID</strong>.</li>
+      <li>Application type: <strong>Chrome Extension</strong>.</li>
+      <li>
+        Extension ID: <code id="ext-id">loading…</code>
+        <button class="btn btn-gray" id="copy-id-btn" style="margin-top:6px;padding:5px 10px;font-size:11px">Copy ID</button>
+      </li>
+      <li>Copy the generated <strong>Client ID</strong> and paste it below.</li>
+    </ol>
+
+    <div class="divider"></div>
+
+    <label style="font-size:12px;color:#9ca3af;display:block;margin-bottom:6px">OAuth Client ID</label>
+    <div style="display:flex;gap:8px">
+      <input
+        id="client-id-input"
+        type="text"
+        placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"
+        style="flex:1;padding:9px 12px;background:#111827;border:1px solid #374151;border-radius:7px;color:#f9fafb;font-size:13px;outline:none"
+      >
+      <button class="btn btn-blue" id="save-clientid-btn">Save</button>
+    </div>
+    <p style="margin-top:8px;font-size:11px;color:#6b7280">
+      ⚠️ After saving, you must reload the extension in <code>chrome://extensions</code> for the new Client ID to take effect.
+    </p>
+    <div id="status-area"></div>
+  </div>
+
+  <!-- Step 2: Sign In -->
+  <div class="card">
+    <h2>
+      Step 2 — Connect Google Account
+      <span class="badge" id="badge-account">not connected</span>
+    </h2>
+    <p>Sign in with the Google account whose Drive will store your screenshots. Screenshots go into a folder called <strong>SnapShare</strong>.</p>
+
+    <div id="account-row" style="display:none">
+      <span id="account-email"></span>
+    </div>
+
+    <button class="btn btn-blue" id="connect-btn">Sign in with Google</button>
+    <button class="btn btn-red"  id="disconnect-btn" style="display:none">Disconnect</button>
+
+    <div id="folder-info"></div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card">
+    <h2>How it works</h2>
+    <ul>
+      <li>Click the SnapShare icon in your toolbar to capture the full page.</li>
+      <li>Drag to select a sub-region, or annotate the full page.</li>
+      <li>Hit the upload button — the screenshot is saved to your <strong>SnapShare</strong> Drive folder.</li>
+      <li>A shareable link is copied to your clipboard. Anyone with the link can view it — no login needed.</li>
+      <li>To revoke access, delete the file from your Google Drive.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

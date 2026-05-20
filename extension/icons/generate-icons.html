@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!-- Open this file in Chrome, then right-click each canvas to "Save image as" the correct filename -->
+<html>
+<head><title>Generate SnapShare Icons</title>
+<style>
+  body { font-family: sans-serif; background: #111; color: #eee; padding: 32px; display: flex; gap: 32px; align-items: flex-start; }
+  canvas { display: block; image-rendering: pixelated; }
+  .item { text-align: center; }
+  p { margin-top: 8px; font-size: 13px; color: #9ca3af; }
+  a { display: inline-block; margin-top: 6px; color: #60a5fa; font-size: 12px; cursor: pointer; }
+</style>
+</head>
+<body>
+<script>
+function makeIcon(size) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const s = size;
+
+  // Background circle
+  ctx.fillStyle = '#1a73e8';
+  ctx.beginPath();
+  ctx.arc(s/2, s/2, s/2, 0, Math.PI*2);
+  ctx.fill();
+
+  // Camera body
+  const pad  = s * 0.18;
+  const bx   = pad;
+  const by   = s * 0.3;
+  const bw   = s - pad*2;
+  const bh   = s * 0.42;
+  const br   = s * 0.08;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(bx, by, bw, bh, br);
+  ctx.fill();
+
+  // Lens
+  const lr = s * 0.14;
+  ctx.fillStyle = '#1a73e8';
+  ctx.beginPath();
+  ctx.arc(s/2, by + bh/2 + s*0.01, lr, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(s/2, by + bh/2 + s*0.01, lr * 0.55, 0, Math.PI*2);
+  ctx.fill();
+
+  // Flash bump
+  const fx = s * 0.28;
+  const fy = s * 0.24;
+  const fw = s * 0.18;
+  const fh = s * 0.09;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(fx, fy, fw, fh, fh/2);
+  ctx.fill();
+
+  return c;
+}
+
+[16, 48, 128].forEach(size => {
+  const c = makeIcon(size);
+  const wrap = document.createElement('div');
+  wrap.className = 'item';
+
+  // Display at 2x for visibility of small icons
+  const display = document.createElement('canvas');
+  const dsize = Math.max(size, 64);
+  display.width = display.height = dsize;
+  display.getContext('2d').drawImage(c, 0, 0, dsize, dsize);
+
+  const p = document.createElement('p');
+  p.textContent = `icon${size}.png`;
+
+  const a = document.createElement('a');
+  a.textContent = '⬇ Download';
+  a.href = c.toDataURL('image/png');
+  a.download = `icon${size}.png`;
+
+  wrap.appendChild(display);
+  wrap.appendChild(p);
+  wrap.appendChild(a);
+  document.body.appendChild(wrap);
+});
+</script>
+</body>
+</html>
