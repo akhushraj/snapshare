@@ -531,7 +531,7 @@ function getAuthToken() {
       if (chrome.runtime.lastError) {
         const msg = chrome.runtime.lastError.message || '';
         if (msg.includes('client_id')) {
-          reject(new Error('OAuth not configured — open SnapShare Options and follow the setup guide.'));
+          reject(new Error('OAuth not configured — open Screenshot Options to connect your Google Drive.'));
         } else {
           reject(new Error(`Auth failed: ${msg}`));
         }
@@ -558,7 +558,7 @@ async function getOrCreateFolder(token) {
 
   // Create folder
   const r = await drivePost(token, 'files', {
-    name: 'SnapShare',
+    name: 'Screenshot',
     mimeType: 'application/vnd.google-apps.folder',
   });
   if (!r.ok) throw new Error(`Could not create Drive folder (${r.status})`);

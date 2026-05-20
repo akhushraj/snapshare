@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Icon Options</title>
+<style>
+  body {
+    background: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 24px;
+    gap: 48px;
+    color: #f1f5f9;
+  }
+  h1 { font-size: 18px; color: #94a3b8; font-weight: 500; margin: 0; }
+  .row {
+    display: flex;
+    gap: 40px;
+    align-items: flex-end;
+  }
+  .option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .sizes {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+  }
+  canvas { border-radius: 22%; display: block; }
+  .sz { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sz span { font-size: 10px; color: #475569; }
+</style>
+</head>
+<body>
+<h1>Screenshot — Icon Options</h1>
+<div class="row" id="icons"></div>
+
+<script>
+const OPTIONS = [
+  { label: 'A — Camera', draw: drawCamera },
+  { label: 'B — Selection Box', draw: drawSelection },
+  { label: 'C — Screen Capture', draw: drawScreen },
+  { label: 'D — Crosshair', draw: drawCrosshair },
+];
+
+// ── Draw functions ────────────────────────────────────────────────────────
+
+function drawCamera(ctx, s) {
+  const r = s / 2;
+  // BG
+  ctx.fillStyle = '#1a73e8';
+  roundRect(ctx, 0, 0, s, s, s * 0.22);
+  ctx.fill();
+
+  // Camera body
+  const bx = s*0.12, by = s*0.28, bw = s*0.76, bh = s*0.44, br = s*0.09;
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, bx, by, bw, bh, br);
+  ctx.fill();
+
+  // Lens outer
+  ctx.fillStyle = '#1a73e8';
+  ctx.beginPath();
+  ctx.arc(s*0.5, by + bh/2 + s*0.01, s*0.155, 0, Math.PI*2);
+  ctx.fill();
+
+  // Lens inner
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(s*0.5, by + bh/2 + s*0.01, s*0.08, 0, Math.PI*2);
+  ctx.fill();
+
+  // Viewfinder bump
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, s*0.27, s*0.2, s*0.2, s*0.1, s*0.04);
+  ctx.fill();
+}
+
+function drawSelection(ctx, s) {
+  // BG
+  ctx.fillStyle = '#7c3aed';
+  roundRect(ctx, 0, 0, s, s, s * 0.22);
+  ctx.fill();
+
+  const pad = s * 0.18;
+  const iw = s - pad*2;
+  const ih = s - pad*2;
+  const lw = Math.max(1.5, s * 0.045);
+  const dash = s * 0.1;
+
+  // Dashed selection rectangle
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = lw;
+  ctx.setLineDash([dash, dash * 0.55]);
+  ctx.lineCap = 'round';
+  ctx.strokeRect(pad, pad, iw, ih);
+  ctx.setLineDash([]);
+
+  // Corner markers (solid, thicker)
+  const cs = s * 0.16;
+  const cw = lw * 1.8;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = cw;
+  ctx.lineCap = 'square';
+
+  // TL
+  ctx.beginPath(); ctx.moveTo(pad, pad + cs); ctx.lineTo(pad, pad); ctx.lineTo(pad + cs, pad); ctx.stroke();
+  // TR
+  ctx.beginPath(); ctx.moveTo(pad+iw-cs, pad); ctx.lineTo(pad+iw, pad); ctx.lineTo(pad+iw, pad+cs); ctx.stroke();
+  // BL
+  ctx.beginPath(); ctx.moveTo(pad, pad+ih-cs); ctx.lineTo(pad, pad+ih); ctx.lineTo(pad+cs, pad+ih); ctx.stroke();
+  // BR
+  ctx.beginPath(); ctx.moveTo(pad+iw-cs, pad+ih); ctx.lineTo(pad+iw, pad+ih); ctx.lineTo(pad+iw, pad+ih-cs); ctx.stroke();
+
+  // Small crosshair dot in center
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.arc(s/2, s/2, lw * 0.9, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawScreen(ctx, s) {
+  // BG
+  ctx.fillStyle = '#0284c7';
+  roundRect(ctx, 0, 0, s, s, s * 0.22);
+  ctx.fill();
+
+  // Monitor body
+  const mx = s*0.1, my = s*0.14, mw = s*0.8, mh = s*0.56;
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, mx, my, mw, mh, s*0.07);
+  ctx.fill();
+
+  // Screen inner
+  ctx.fillStyle = '#0284c7';
+  roundRect(ctx, mx+s*0.06, my+s*0.06, mw-s*0.12, mh-s*0.12, s*0.04);
+  ctx.fill();
+
+  // Stand
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, s*0.42, my+mh, s*0.16, s*0.12, s*0.03);
+  ctx.fill();
+
+  // Base
+  roundRect(ctx, s*0.28, my+mh+s*0.11, s*0.44, s*0.07, s*0.03);
+  ctx.fill();
+
+  // Arrow / cursor on screen
+  const ax = s*0.38, ay = s*0.28;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(ax + s*0.24, ay + s*0.14);
+  ctx.lineTo(ax + s*0.13, ay + s*0.16);
+  ctx.lineTo(ax + s*0.2, ay + s*0.32);
+  ctx.lineTo(ax + s*0.12, ay + s*0.35);
+  ctx.lineTo(ax + s*0.05, ay + s*0.19);
+  ctx.lineTo(ax - s*0.04, ay + s*0.26);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawCrosshair(ctx, s) {
+  // BG — dark
+  ctx.fillStyle = '#18181b';
+  roundRect(ctx, 0, 0, s, s, s * 0.22);
+  ctx.fill();
+
+  // Subtle grid (faint)
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = Math.max(1, s*0.025);
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath(); ctx.moveTo(s*i/4, 0); ctx.lineTo(s*i/4, s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, s*i/4); ctx.lineTo(s, s*i/4); ctx.stroke();
+  }
+
+  const pad = s * 0.14;
+  const lw = Math.max(1.5, s * 0.045);
+
+  // Corner brackets — bright
+  const cs = s * 0.2;
+  ctx.strokeStyle = '#22d3ee';
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.beginPath(); ctx.moveTo(pad, pad+cs); ctx.lineTo(pad, pad); ctx.lineTo(pad+cs, pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s-pad-cs, pad); ctx.lineTo(s-pad, pad); ctx.lineTo(s-pad, pad+cs); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad, s-pad-cs); ctx.lineTo(pad, s-pad); ctx.lineTo(pad+cs, s-pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s-pad-cs, s-pad); ctx.lineTo(s-pad, s-pad); ctx.lineTo(s-pad, s-pad-cs); ctx.stroke();
+
+  // Crosshair center
+  const cl = s * 0.09;
+  const gap = s * 0.04;
+  ctx.strokeStyle = '#f8fafc';
+  ctx.lineWidth = lw * 0.75;
+  ctx.beginPath();
+  ctx.moveTo(s/2 - cl, s/2); ctx.lineTo(s/2 - gap, s/2);
+  ctx.moveTo(s/2 + gap, s/2); ctx.lineTo(s/2 + cl, s/2);
+  ctx.moveTo(s/2, s/2 - cl); ctx.lineTo(s/2, s/2 - gap);
+  ctx.moveTo(s/2, s/2 + gap); ctx.lineTo(s/2, s/2 + cl);
+  ctx.stroke();
+
+  // Center dot
+  ctx.fillStyle = '#22d3ee';
+  ctx.beginPath();
+  ctx.arc(s/2, s/2, lw * 0.75, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+
+const row = document.getElementById('icons');
+
+OPTIONS.forEach(({ label, draw }) => {
+  const opt = document.createElement('div');
+  opt.className = 'option';
+
+  const sizes = document.createElement('div');
+  sizes.className = 'sizes';
+
+  [128, 48, 16].forEach(sz => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sz';
+
+    const c = document.createElement('canvas');
+    c.width = c.height = sz;
+    // Show at comfortable viewing size
+    const disp = Math.max(sz, sz === 16 ? 32 : sz === 48 ? 64 : 128);
+    c.style.width = c.style.height = disp + 'px';
+    c.style.imageRendering = 'pixelated';
+
+    draw(c.getContext('2d'), sz);
+
+    const lbl = document.createElement('span');
+    lbl.textContent = sz + 'px';
+
+    wrap.appendChild(c);
+    wrap.appendChild(lbl);
+    sizes.appendChild(wrap);
+  });
+
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = label;
+
+  opt.appendChild(sizes);
+  opt.appendChild(lbl);
+  row.appendChild(opt);
+});
+</script>
+</body>
+</html>

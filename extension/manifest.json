@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SnapShare",
+  "name": "Screenshot",
   "version": "1.0.0",
-  "description": "Capture, annotate, and share screenshots via Google Drive",
+  "description": "Capture full pages, annotate, and share via Google Drive — no server needed.",
 
   "permissions": [
     "activeTab",
@@ -38,9 +38,10 @@
   },
 
   "oauth2": {
-    "client_id": "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com",
+    "client_id": "REPLACE_WITH_YOUR_CLIENT_ID.apps.googleusercontent.com",
     "scopes": [
-      "https://www.googleapis.com/auth/drive.file"
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/userinfo.email"
     ]
   }
 }

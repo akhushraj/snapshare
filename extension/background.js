@@ -22,7 +22,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       active: true,
     });
   } catch (err) {
-    console.error('[SnapShare] Capture failed:', err);
+    console.error('[Screenshot] Capture failed:', err);
   }
 });
 
