@@ -6,7 +6,7 @@
 const S = {
   tool: 'crop',           // 'crop' | 'arrow' | 'rect' | 'circle' | 'text'
   color: '#FF3B30',
-  strokeWidth: 3,
+  strokeWidth: 6,
 
   image: null,            // HTMLImageElement
 
@@ -158,6 +158,7 @@ function setupEvents() {
   // Keyboard
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doShare(); }
     if (e.key === 'Escape') {
       commitText();
       S.isDrawing   = false;
@@ -440,11 +441,11 @@ function drawCropBox(r) {
 //  Hint text
 // ─────────────────────────────────────────────
 const HINTS = {
-  crop:   'Drag to define the save region. Leave empty to save the full page.',
-  arrow:  'Drag to draw an arrow.',
-  rect:   'Drag to draw a rectangle.',
-  circle: 'Drag to draw a circle or oval.',
-  text:   'Click anywhere to place text. Press Enter to confirm.',
+  crop:   'Drag to select a region to save. Leave empty to save the full page. When ready → click Share (top of toolbar) or press ⌘↵',
+  arrow:  'Drag to draw an arrow. Press ⌘↵ to share when done.',
+  rect:   'Drag to draw a rectangle. Press ⌘↵ to share when done.',
+  circle: 'Drag to draw a circle or oval. Press ⌘↵ to share when done.',
+  text:   'Click anywhere to place text. Press Enter to confirm, then ⌘↵ to share.',
 };
 function updateHint() {
   hintText.textContent = HINTS[S.tool] || '';
