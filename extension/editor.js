@@ -224,6 +224,12 @@ function onMouseDown(e) {
   S.isDrawing = true;
   S.startX = x;
   S.startY = y;
+
+  // Show immediate visual at the click point (before any mouse movement)
+  if (S.tool !== 'crop') {
+    S.preview = buildAnnotation(S.tool, x, y, x, y);
+    render();
+  }
 }
 
 function onMouseMove(e) {
@@ -443,16 +449,27 @@ function drawAnnotation(c, ann) {
 }
 
 function drawArrow(c, { x1, y1, x2, y2, color, width }) {
-  const headLen = Math.max(16, width * 4);
-  const angle   = Math.atan2(y2 - y1, x2 - x1);
-  // Move line end back slightly so it doesn't poke past arrowhead
-  const lx2 = x2 - headLen * 0.65 * Math.cos(angle);
-  const ly2 = y2 - headLen * 0.65 * Math.sin(angle);
+  const dist = Math.hypot(x2 - x1, y2 - y1);
 
-  c.strokeStyle = color;
   c.fillStyle   = color;
+  c.strokeStyle = color;
   c.lineWidth   = width;
   c.lineCap     = 'round';
+
+  // Too short to draw a real arrow — just show a dot at the origin
+  if (dist < 4) {
+    c.beginPath();
+    c.arc(x1, y1, Math.max(width * 0.6, 3), 0, Math.PI * 2);
+    c.fill();
+    return;
+  }
+
+  // Arrowhead can't be bigger than 60% of the total arrow length
+  const headLen = Math.min(Math.max(16, width * 4), dist * 0.6);
+  const angle   = Math.atan2(y2 - y1, x2 - x1);
+  // Pull shaft end back so it doesn't poke through the arrowhead
+  const lx2 = x2 - headLen * 0.65 * Math.cos(angle);
+  const ly2 = y2 - headLen * 0.65 * Math.sin(angle);
 
   // Shaft
   c.beginPath();
