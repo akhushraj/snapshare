@@ -27,6 +27,24 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 async function captureFullPage(tabId) {
+  // Get real scroll dimensions from the DOM — more reliable than CDP metrics
+  // for fixed-layout SPAs (like Claude, Notion, etc.) that report inflated contentSize.
+  const [{ result: dims }] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => ({
+      scrollW: document.documentElement.scrollWidth,
+      scrollH: document.documentElement.scrollHeight,
+      viewW:   window.innerWidth,
+      viewH:   window.innerHeight,
+    }),
+  });
+
+  // Width: use viewport width. Horizontal scrolling is almost never intentional
+  // for a screenshot, and contentSize/scrollWidth can be inflated on SPAs.
+  const width  = dims.viewW;
+  // Height: use actual scroll height (captures long pages), but cap at 16384px.
+  const height = Math.min(dims.scrollH, 16384);
+
   try {
     await chrome.debugger.attach({ tabId }, '1.3');
   } catch (err) {
@@ -37,15 +55,6 @@ async function captureFullPage(tabId) {
   }
 
   try {
-    const metrics = await chrome.debugger.sendCommand(
-      { tabId },
-      'Page.getLayoutMetrics'
-    );
-
-    const width = Math.ceil(metrics.contentSize.width);
-    // Cap at 16384px to avoid memory issues on extremely long pages
-    const height = Math.min(Math.ceil(metrics.contentSize.height), 16384);
-
     const { data } = await chrome.debugger.sendCommand(
       { tabId },
       'Page.captureScreenshot',
@@ -55,7 +64,6 @@ async function captureFullPage(tabId) {
         clip: { x: 0, y: 0, width, height, scale: 1 },
       }
     );
-
     return data;
   } finally {
     try {
