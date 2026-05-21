@@ -6,7 +6,7 @@
 const S = {
   tool: 'crop',           // 'crop' | 'select' | 'arrow' | 'rect' | 'circle' | 'text'
   color: '#FF3B30',
-  strokeWidth: 6,
+  strokeWidth: parseInt(localStorage.getItem('ss-stroke') || '12', 10),
 
   image: null,            // HTMLImageElement
 
@@ -113,21 +113,48 @@ function setupEvents() {
     });
   });
 
-  // Color dots
-  document.querySelectorAll('.color-dot').forEach(dot => {
-    dot.addEventListener('click', () => {
-      S.color = dot.dataset.color;
-      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
-      dot.classList.add('active');
-      // Update text input color live
-      textInput.style.color = S.color;
+  // ── Color button + popover ──
+  const colorBtn     = document.getElementById('color-btn');
+  const colorSwatch  = document.getElementById('color-swatch');
+  const colorPopover = document.getElementById('color-popover');
+
+  function setColor(hex) {
+    S.color = hex;
+    colorSwatch.style.background = hex;
+    colorSwatch.style.borderColor = hex === '#FFFFFF' ? '#6b7280' : 'rgba(255,255,255,0.5)';
+    textInput.style.color = hex;
+    document.querySelectorAll('.cpop-dot').forEach(d => d.classList.toggle('active', d.dataset.color === hex));
+  }
+
+  colorBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const rect = colorBtn.getBoundingClientRect();
+    colorPopover.style.top = `${rect.top}px`;
+    colorPopover.classList.toggle('visible');
+  });
+
+  document.querySelectorAll('.cpop-dot').forEach(dot => {
+    dot.addEventListener('click', e => {
+      e.stopPropagation();
+      setColor(dot.dataset.color);
+      colorPopover.classList.remove('visible');
     });
   });
 
-  // Stroke buttons
+  // Close popover when clicking anywhere else
+  document.addEventListener('click', () => colorPopover.classList.remove('visible'));
+
+  // Initialise swatch to match default color
+  setColor(S.color);
+
+  // ── Stroke buttons ──
+  // Reflect saved stroke on page load
   document.querySelectorAll('.stroke-btn').forEach(btn => {
+    const w = parseInt(btn.dataset.width, 10);
+    btn.classList.toggle('active', w === S.strokeWidth);
     btn.addEventListener('click', () => {
-      S.strokeWidth = parseInt(btn.dataset.width, 10);
+      S.strokeWidth = w;
+      localStorage.setItem('ss-stroke', w);
       document.querySelectorAll('.stroke-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     });
@@ -386,7 +413,8 @@ function placeTextInput(imgX, imgY, clientX, clientY) {
   textWrap.style.left    = `${clientX}px`;
   textWrap.style.top     = `${clientY - fontSize * 0.85}px`;
   textWrap.style.display = 'block';
-  textInput.focus();
+  // Defer focus — mousedown steals it back if we call synchronously
+  setTimeout(() => textInput.focus(), 0);
 }
 
 function commitText() {
@@ -441,11 +469,25 @@ function render() {
 // ─────────────────────────────────────────────
 function drawAnnotation(c, ann) {
   c.save();
-  if (ann.type === 'arrow')  drawArrow(c, ann);
-  if (ann.type === 'rect')   drawRect(c, ann);
-  if (ann.type === 'circle') drawCircle(c, ann);
-  if (ann.type === 'text')   drawText(c, ann);
+  if (ann.type === 'arrow') {
+    drawArrow(c, ann);
+  } else if (ann.type === 'rect') {
+    if (ann.w < 3 && ann.h < 3) drawStartDot(c, ann.x, ann.y, ann);
+    else drawRect(c, ann);
+  } else if (ann.type === 'circle') {
+    if (ann.rx < 3 && ann.ry < 3) drawStartDot(c, ann.cx, ann.cy, ann);
+    else drawCircle(c, ann);
+  } else if (ann.type === 'text') {
+    drawText(c, ann);
+  }
   c.restore();
+}
+
+function drawStartDot(c, x, y, ann) {
+  c.fillStyle = ann.color;
+  c.beginPath();
+  c.arc(x, y, Math.max(ann.width * 0.6, 3), 0, Math.PI * 2);
+  c.fill();
 }
 
 function drawArrow(c, { x1, y1, x2, y2, color, width }) {

@@ -17,30 +17,30 @@
 
     /* ── Toolbar ── */
     #toolbar {
-      width: 56px;
+      width: 50px;
       background: #1f2937;
       border-right: 1px solid #374151;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 10px 6px;
-      gap: 3px;
+      padding: 6px 4px;
+      gap: 1px;
       flex-shrink: 0;
       overflow-y: auto;
     }
 
     .tb-divider {
-      width: 36px;
+      width: 32px;
       height: 1px;
       background: #374151;
-      margin: 5px 0;
+      margin: 2px 0;
       flex-shrink: 0;
     }
 
     .tool-btn {
-      width: 42px;
-      height: 42px;
-      border-radius: 8px;
+      width: 38px;
+      height: 36px;
+      border-radius: 7px;
       border: none;
       background: transparent;
       color: #9ca3af;
@@ -58,11 +58,10 @@
 
     /* Tooltip */
     .tool-btn[title]:hover::after,
-    .color-dot[title]:hover::after,
     .stroke-btn[title]:hover::after {
       content: attr(title);
       position: fixed;
-      left: 62px;
+      left: 54px;
       background: #111827;
       border: 1px solid #374151;
       color: #f9fafb;
@@ -74,31 +73,66 @@
       z-index: 999;
     }
 
-    /* Color dots */
-    .color-dot {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: border-color 0.12s, transform 0.12s;
-      flex-shrink: 0;
-    }
-    .color-dot:hover { transform: scale(1.15); }
-    .color-dot.active { border-color: #fff; }
-
-    /* Stroke size buttons */
-    .stroke-btn {
-      width: 42px;
-      height: 30px;
-      border-radius: 6px;
+    /* Color button + popover */
+    #color-btn {
+      width: 38px;
+      height: 36px;
+      border-radius: 7px;
       border: none;
       background: transparent;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0 8px;
+      transition: background 0.12s;
+      flex-shrink: 0;
+    }
+    #color-btn:hover { background: #374151; }
+    #color-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #FF3B30;
+      border: 2px solid rgba(255,255,255,0.5);
+      pointer-events: none;
+    }
+    #color-popover {
+      display: none;
+      position: fixed;
+      left: 54px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 8px;
+      z-index: 500;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    #color-popover.visible { display: grid; }
+    .cpop-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.1s, border-color 0.1s;
+    }
+    .cpop-dot:hover { transform: scale(1.12); }
+    .cpop-dot.active { border-color: #fff; }
+
+    /* Stroke size buttons */
+    .stroke-btn {
+      width: 38px;
+      height: 26px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
       transition: background 0.12s;
       flex-shrink: 0;
     }
@@ -113,8 +147,8 @@
 
     /* Share button */
     #share-btn {
-      width: 42px;
-      height: 42px;
+      width: 38px;
+      height: 38px;
       border-radius: 8px;
       border: none;
       background: #1a73e8;
@@ -300,7 +334,7 @@
     #hint-bar {
       position: fixed;
       bottom: 0;
-      left: 56px;
+      left: 50px;
       right: 0;
       background: #1f2937;
       border-top: 1px solid #374151;
@@ -369,23 +403,20 @@
 
     <div class="tb-divider"></div>
 
-    <div class="color-dot active" data-color="#FF3B30" style="background:#FF3B30" title="Red"></div>
-    <div class="color-dot" data-color="#FF9500" style="background:#FF9500" title="Orange"></div>
-    <div class="color-dot" data-color="#FFCC00" style="background:#FFCC00" title="Yellow"></div>
-    <div class="color-dot" data-color="#30D158" style="background:#30D158" title="Green"></div>
-    <div class="color-dot" data-color="#0A84FF" style="background:#0A84FF" title="Blue"></div>
-    <div class="color-dot" data-color="#FFFFFF" style="background:#fff;border-color:#4b5563" title="White"></div>
-    <div class="color-dot" data-color="#000000" style="background:#000" title="Black"></div>
+    <!-- Color picker (click to open popover) -->
+    <button id="color-btn" title="Color">
+      <div id="color-swatch"></div>
+    </button>
 
     <div class="tb-divider"></div>
 
     <button class="stroke-btn" data-width="3" title="Thin">
       <div class="stroke-line" style="height:2px"></div>
     </button>
-    <button class="stroke-btn active" data-width="6" title="Medium">
+    <button class="stroke-btn" data-width="6" title="Medium">
       <div class="stroke-line" style="height:4px"></div>
     </button>
-    <button class="stroke-btn" data-width="12" title="Thick">
+    <button class="stroke-btn active" data-width="12" title="Thick">
       <div class="stroke-line" style="height:7px"></div>
     </button>
 
@@ -413,7 +444,19 @@
 
   <!-- ── Text input ── -->
   <div id="text-wrap">
-    <input id="text-input" type="text" placeholder="Type here…">
+    <input id="text-input" type="text" placeholder="Type here…" autocomplete="off">
+  </div>
+
+  <!-- ── Color popover ── -->
+  <div id="color-popover">
+    <div class="cpop-dot active" data-color="#FF3B30" style="background:#FF3B30" title="Red"></div>
+    <div class="cpop-dot" data-color="#FF9500" style="background:#FF9500" title="Orange"></div>
+    <div class="cpop-dot" data-color="#FFCC00" style="background:#FFCC00" title="Yellow"></div>
+    <div class="cpop-dot" data-color="#30D158" style="background:#30D158" title="Green"></div>
+    <div class="cpop-dot" data-color="#0A84FF" style="background:#0A84FF" title="Blue"></div>
+    <div class="cpop-dot" data-color="#FFFFFF" style="background:#fff;border-color:#4b5563" title="White"></div>
+    <div class="cpop-dot" data-color="#000000" style="background:#000" title="Black"></div>
+    <div class="cpop-dot" data-color="#FF2D55" style="background:#FF2D55" title="Pink"></div>
   </div>
 
   <!-- ── Share URL modal ── -->
