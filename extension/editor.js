@@ -635,7 +635,8 @@ function showUrlModal(url) {
 }
 
 function showError(msg) {
-  errorBar.textContent = msg;
+  errorBar.innerHTML = `⚠️ ${msg} <span id="err-close" style="float:right;cursor:pointer;margin-left:12px;font-weight:bold;">✕</span>`;
   errorBar.style.display = 'block';
-  setTimeout(() => { errorBar.style.display = 'none'; }, 6000);
+  document.getElementById('err-close').onclick = () => { errorBar.style.display = 'none'; };
+  console.error('[Screenshot]', msg);
 }
