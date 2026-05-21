@@ -4,7 +4,7 @@
 //  State
 // ─────────────────────────────────────────────
 const S = {
-  tool: 'crop',           // 'crop' | 'arrow' | 'rect' | 'circle' | 'text'
+  tool: 'crop',           // 'crop' | 'select' | 'arrow' | 'rect' | 'circle' | 'text'
   color: '#FF3B30',
   strokeWidth: 6,
 
@@ -21,6 +21,12 @@ const S = {
   preview: null,          // in-progress shape (not yet committed)
 
   textPending: null,      // { x, y } waiting for text input
+
+  // Select / move
+  selectedIdx: -1,        // index into annotations[], -1 = none
+  isDraggingAnnotation: false,
+  dragLastX: 0,
+  dragLastY: 0,
 };
 
 // ─────────────────────────────────────────────
@@ -98,6 +104,8 @@ function setupEvents() {
     btn.addEventListener('click', () => {
       commitText();
       S.tool = btn.dataset.tool;
+      S.selectedIdx = -1;  // deselect when switching tools
+      canvas.style.cursor = S.tool === 'select' ? 'default' : 'crosshair';
       document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       updateHint();
@@ -151,19 +159,26 @@ function setupEvents() {
 
   // Canvas mouse events
   canvas.addEventListener('mousedown',  onMouseDown);
-  canvas.addEventListener('mousemove',  onMouseMove);
-  canvas.addEventListener('mouseup',    onMouseUp);
-  canvas.addEventListener('mouseleave', onMouseLeave);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup',   onMouseUp);
 
   // Keyboard
   document.addEventListener('keydown', e => {
+    if (e.target === textInput) return; // let text input handle its own keys
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doShare(); }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && S.selectedIdx >= 0) {
+      e.preventDefault();
+      S.annotations.splice(S.selectedIdx, 1);
+      S.selectedIdx = -1;
+      render();
+    }
     if (e.key === 'Escape') {
       commitText();
       S.isDrawing   = false;
       S.preview     = null;
       S.cropPreview = null;
+      S.selectedIdx = -1;
       render();
     }
   });
@@ -183,20 +198,56 @@ function setupEvents() {
 function onMouseDown(e) {
   if (e.button !== 0) return;
   const { x, y } = toImg(e);
-  S.isDrawing = true;
-  S.startX = x;
-  S.startY = y;
 
+  // ── Select tool ──
+  if (S.tool === 'select') {
+    let hit = -1;
+    for (let i = S.annotations.length - 1; i >= 0; i--) {
+      if (hitTest(S.annotations[i], x, y)) { hit = i; break; }
+    }
+    S.selectedIdx = hit;
+    if (hit >= 0) {
+      S.isDraggingAnnotation = true;
+      S.dragLastX = x;
+      S.dragLastY = y;
+      canvas.style.cursor = 'grabbing';
+    }
+    render();
+    return;
+  }
+
+  // ── Drawing tools ──
   if (S.tool === 'text') {
-    S.isDrawing = false;
     placeTextInput(x, y, e.clientX, e.clientY);
     return;
   }
+  S.isDrawing = true;
+  S.startX = x;
+  S.startY = y;
 }
 
 function onMouseMove(e) {
-  if (!S.isDrawing) return;
   const { x, y } = toImg(e);
+
+  // Moving a selected annotation
+  if (S.isDraggingAnnotation && S.selectedIdx >= 0) {
+    const dx = x - S.dragLastX;
+    const dy = y - S.dragLastY;
+    moveAnnotation(S.annotations[S.selectedIdx], dx, dy);
+    S.dragLastX = x;
+    S.dragLastY = y;
+    render();
+    return;
+  }
+
+  if (!S.isDrawing) {
+    // Update cursor when hovering in select mode
+    if (S.tool === 'select') {
+      const hovering = S.annotations.some(a => hitTest(a, x, y));
+      canvas.style.cursor = hovering ? 'grab' : 'default';
+    }
+    return;
+  }
 
   if (S.tool === 'crop') {
     S.cropPreview = normalizeRect(S.startX, S.startY, x, y);
@@ -207,6 +258,14 @@ function onMouseMove(e) {
 }
 
 function onMouseUp(e) {
+  // Stop annotation drag
+  if (S.isDraggingAnnotation) {
+    S.isDraggingAnnotation = false;
+    canvas.style.cursor = 'grab';
+    render();
+    return;
+  }
+
   if (!S.isDrawing) return;
   S.isDrawing = false;
 
@@ -215,28 +274,16 @@ function onMouseUp(e) {
   const dy = Math.abs(y - S.startY);
 
   if (S.tool === 'crop') {
-    // Only commit if the drag had some size
-    if (dx > 4 || dy > 4) {
-      S.cropRegion = normalizeRect(S.startX, S.startY, x, y);
-    }
+    if (dx > 4 || dy > 4) S.cropRegion = normalizeRect(S.startX, S.startY, x, y);
     S.cropPreview = null;
   } else if (S.preview) {
-    // Commit annotation if it has size (avoids accidental click dots)
     if (dx > 2 || dy > 2 || S.tool === 'arrow') {
       S.annotations.push(S.preview);
+      S.selectedIdx = S.annotations.length - 1; // auto-select what was just drawn
     }
     S.preview = null;
   }
   render();
-}
-
-function onMouseLeave() {
-  if (S.isDrawing) {
-    S.isDrawing   = false;
-    S.preview     = null;
-    S.cropPreview = null;
-    render();
-  }
 }
 
 // ─────────────────────────────────────────────
@@ -261,6 +308,46 @@ function normalizeRect(x1, y1, x2, y2) {
     w: Math.abs(x2 - x1),
     h: Math.abs(y2 - y1),
   };
+}
+
+// ─────────────────────────────────────────────
+//  Hit testing
+// ─────────────────────────────────────────────
+function hitTest(ann, px, py) {
+  const pad = Math.max(12, (ann.width || 6) * 2);
+  if (ann.type === 'arrow') {
+    // Distance from point to line segment
+    const dx = ann.x2 - ann.x1, dy = ann.y2 - ann.y1;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 ? Math.max(0, Math.min(1, ((px - ann.x1) * dx + (py - ann.y1) * dy) / len2)) : 0;
+    const cx = ann.x1 + t * dx, cy = ann.y1 + t * dy;
+    return Math.hypot(px - cx, py - cy) <= pad;
+  }
+  if (ann.type === 'rect') {
+    const inOuter = px >= ann.x - pad && px <= ann.x + ann.w + pad && py >= ann.y - pad && py <= ann.y + ann.h + pad;
+    const inInner = px > ann.x + pad && px < ann.x + ann.w - pad && py > ann.y + pad && py < ann.y + ann.h - pad;
+    return inOuter && !inInner;
+  }
+  if (ann.type === 'circle') {
+    const ddx = (px - ann.cx) / Math.max(1, ann.rx), ddy = (py - ann.cy) / Math.max(1, ann.ry);
+    const margin = pad / Math.min(ann.rx, ann.ry);
+    return Math.abs(Math.hypot(ddx, ddy) - 1) < margin;
+  }
+  if (ann.type === 'text') {
+    const w = ann.text.length * ann.fontSize * 0.55;
+    return px >= ann.x - 4 && px <= ann.x + w && py >= ann.y - ann.fontSize && py <= ann.y + 4;
+  }
+  return false;
+}
+
+// ─────────────────────────────────────────────
+//  Move annotation by delta
+// ─────────────────────────────────────────────
+function moveAnnotation(ann, dx, dy) {
+  if (ann.type === 'arrow')  { ann.x1 += dx; ann.y1 += dy; ann.x2 += dx; ann.y2 += dy; }
+  if (ann.type === 'rect')   { ann.x  += dx; ann.y  += dy; }
+  if (ann.type === 'circle') { ann.cx += dx; ann.cy += dy; }
+  if (ann.type === 'text')   { ann.x  += dx; ann.y  += dy; }
 }
 
 // ─────────────────────────────────────────────
@@ -330,7 +417,10 @@ function render() {
   ctx.drawImage(S.image, 0, 0);
 
   // Finished annotations
-  for (const ann of S.annotations) drawAnnotation(ctx, ann);
+  for (let i = 0; i < S.annotations.length; i++) {
+    drawAnnotation(ctx, S.annotations[i]);
+    if (i === S.selectedIdx) drawSelectionHandles(ctx, S.annotations[i]);
+  }
 
   // In-progress shape preview
   if (S.preview) drawAnnotation(ctx, S.preview);
@@ -438,10 +528,53 @@ function drawCropBox(r) {
 }
 
 // ─────────────────────────────────────────────
+//  Selection handles
+// ─────────────────────────────────────────────
+function drawSelectionHandles(c, ann) {
+  const cssScale = canvas.getBoundingClientRect().width / canvas.width;
+  const lw  = 1.5 / cssScale;
+  const hs  = 5  / cssScale;   // handle half-size
+  const pad = 8  / cssScale;
+
+  c.save();
+  c.strokeStyle = '#1a73e8';
+  c.fillStyle   = '#1a73e8';
+  c.lineWidth   = lw;
+  c.setLineDash([5 / cssScale, 3 / cssScale]);
+
+  if (ann.type === 'arrow') {
+    // Draw dots at both endpoints
+    c.setLineDash([]);
+    [[ann.x1, ann.y1], [ann.x2, ann.y2]].forEach(([hx, hy]) => {
+      c.beginPath();
+      c.arc(hx, hy, hs * 1.6, 0, Math.PI * 2);
+      c.fill();
+    });
+  } else if (ann.type === 'rect') {
+    c.strokeRect(ann.x - pad, ann.y - pad, ann.w + pad * 2, ann.h + pad * 2);
+    [[ann.x - pad, ann.y - pad], [ann.x + ann.w + pad, ann.y - pad],
+     [ann.x - pad, ann.y + ann.h + pad], [ann.x + ann.w + pad, ann.y + ann.h + pad]].forEach(([hx, hy]) => {
+      c.setLineDash([]);
+      c.fillRect(hx - hs, hy - hs, hs * 2, hs * 2);
+      c.setLineDash([5 / cssScale, 3 / cssScale]);
+    });
+  } else if (ann.type === 'circle') {
+    c.beginPath();
+    c.ellipse(ann.cx, ann.cy, ann.rx + pad, ann.ry + pad, 0, 0, Math.PI * 2);
+    c.stroke();
+  } else if (ann.type === 'text') {
+    const w = ann.text.length * ann.fontSize * 0.55;
+    c.strokeRect(ann.x - pad, ann.y - ann.fontSize - pad, w + pad * 2, ann.fontSize + pad * 2);
+  }
+  c.restore();
+}
+
+// ─────────────────────────────────────────────
 //  Hint text
 // ─────────────────────────────────────────────
 const HINTS = {
-  crop:   'Drag to select a region to save. Leave empty to save the full page. When ready → click Share (top of toolbar) or press ⌘↵',
+  crop:   'Drag to select a region to save. Leave empty to save the full page. Press ⌘↵ to share.',
+  select: 'Click an annotation to select it. Drag to move it. Press Delete to remove it.',
   arrow:  'Drag to draw an arrow. Press ⌘↵ to share when done.',
   rect:   'Drag to draw a rectangle. Press ⌘↵ to share when done.',
   circle: 'Drag to draw a circle or oval. Press ⌘↵ to share when done.',
