@@ -715,9 +715,6 @@ function shiftAnnotation(ann, dx, dy) {
 // ─────────────────────────────────────────────
 async function doShare() {
   commitText();
-  const btn = document.getElementById('share-btn');
-  btn.disabled = true;
-
   try {
     showStatus('Preparing screenshot…');
     const blob = await exportBlob();
@@ -740,8 +737,6 @@ async function doShare() {
   } catch (err) {
     hideStatus();
     showError(err.message || 'Upload failed. Check the options page to verify your Google Drive connection.');
-  } finally {
-    btn.disabled = false;
   }
 }
 
