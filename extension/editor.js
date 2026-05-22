@@ -176,7 +176,6 @@ function setupEvents() {
   // Copy to clipboard
   document.getElementById('clip-btn').addEventListener('click', async () => {
     const btn = document.getElementById('clip-btn');
-    btn.disabled = true;
     try {
       commitText();
       const blob = await exportBlob();
@@ -187,8 +186,6 @@ function setupEvents() {
       setTimeout(() => { btn.innerHTML = orig; }, 1500);
     } catch (err) {
       showError('Clipboard copy failed — ' + (err.message || 'unknown error'));
-    } finally {
-      btn.disabled = false;
     }
   });
 
