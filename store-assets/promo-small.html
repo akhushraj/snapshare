@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:440px; height:280px; overflow:hidden; }
+  body {
+    background:#0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color:#f8fafc;
+    position:relative;
+  }
+  .center {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  body::before {
+    content:'';
+    position:absolute;
+    width:320px; height:320px;
+    background:radial-gradient(circle, rgba(37,99,235,0.2) 0%, transparent 65%);
+    top:-60px; left:50%; transform:translateX(-50%);
+    pointer-events:none;
+  }
+  img {
+    width:56px; height:56px; border-radius:13px;
+    margin-bottom:14px; z-index:1;
+  }
+  h1 {
+    font-size:28px; font-weight:800; letter-spacing:-0.8px;
+    margin-bottom:6px; z-index:1;
+  }
+  .tag {
+    font-size:13px; color:#94a3b8;
+    margin-bottom:20px; z-index:1;
+  }
+  .pills {
+    display:flex; gap:8px; z-index:1;
+  }
+  .pill {
+    padding:5px 12px;
+    background:rgba(37,99,235,0.2);
+    border:1px solid rgba(96,165,250,0.35);
+    border-radius:20px;
+    font-size:12px; color:#93c5fd;
+  }
+</style>
+</head>
+<body>
+  <div class="center">
+    <img src="/extension/icons/icon128.png" alt="">
+    <h1>Screenshot</h1>
+    <p class="tag">Capture · Annotate · Share</p>
+    <div class="pills">
+      <span class="pill">📋 Copy</span>
+      <span class="pill">☁️ Drive</span>
+      <span class="pill">✏️ Annotate</span>
+    </div>
+  </div>
+</body>
+</html>

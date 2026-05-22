@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:1280px; height:800px; overflow:hidden;
+    background:#111827;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display:flex;
+  }
+
+  /* ── Toolbar ── */
+  #toolbar {
+    width:50px; background:#1f2937;
+    border-right:1px solid #374151;
+    display:flex; flex-direction:column;
+    align-items:center; padding:6px 4px; gap:1px;
+    flex-shrink:0;
+  }
+  .tb-div { width:32px; height:1px; background:#374151; margin:3px 0; }
+  .tool-btn {
+    width:38px; height:36px; border-radius:7px;
+    background:transparent;
+    display:flex; align-items:center; justify-content:center;
+    color:#9ca3af;
+  }
+  .tool-btn.active { background:#2563eb; color:#fff; }
+  .tool-btn svg { width:17px; height:17px; }
+  #share-btn, #clip-btn {
+    width:38px; height:38px; border-radius:8px;
+    background:transparent; color:#9ca3af;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stroke-btn {
+    width:38px; height:24px; border-radius:5px;
+    background:transparent; display:flex; align-items:center;
+    justify-content:center; padding:0 6px;
+  }
+  .stroke-btn.active { background:#1d4ed8; }
+  .stroke-line { background:#9ca3af; border-radius:2px; width:100%; }
+  .stroke-btn.active .stroke-line { background:#fff; }
+  #color-btn {
+    width:38px; height:36px; border-radius:7px;
+    background:transparent;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .swatch {
+    width:20px; height:20px; border-radius:50%;
+    background:#ef4444; border:2px solid rgba(255,255,255,0.5);
+  }
+
+  /* ── Canvas wrap ── */
+  #canvas-wrap {
+    flex:1; overflow:auto; padding:20px;
+    background:#111827;
+    display:flex; justify-content:center;
+  }
+
+  /* ── Fake screenshot content ── */
+  .fake-page {
+    width:1100px;
+    background:#fff;
+    border-radius:8px;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.6);
+    overflow:hidden;
+    position:relative;
+    align-self: flex-start;
+  }
+  .page-nav {
+    height:44px; background:#f8f9fa;
+    border-bottom:1px solid #e5e7eb;
+    display:flex; align-items:center; padding:0 16px; gap:8px;
+  }
+  .page-nav .dot { width:10px; height:10px; border-radius:50%; }
+  .url-bar {
+    flex:1; height:22px; background:#e5e7eb;
+    border-radius:11px; margin:0 12px;
+    display:flex; align-items:center; padding:0 12px;
+    font-size:11px; color:#6b7280;
+  }
+  .page-body { padding:32px 40px; }
+  .page-h1 {
+    font-size:28px; font-weight:700; color:#111827;
+    margin-bottom:12px; letter-spacing:-0.5px;
+  }
+  .page-h1 span { color:#2563eb; }
+  .page-p {
+    font-size:14px; color:#6b7280; line-height:1.7;
+    margin-bottom:10px;
+  }
+  .section {
+    margin-top:24px; padding:20px;
+    background:#f8f9fa; border-radius:10px;
+    border:1px solid #e5e7eb;
+  }
+  .section-title { font-size:16px; font-weight:600; color:#111827; margin-bottom:8px; }
+  .metric-row { display:flex; gap:16px; margin-top:16px; }
+  .metric {
+    flex:1; padding:16px; background:#fff;
+    border-radius:8px; border:1px solid #e5e7eb;
+    text-align:center;
+  }
+  .metric-val { font-size:24px; font-weight:700; color:#111827; }
+  .metric-label { font-size:11px; color:#9ca3af; margin-top:4px; }
+
+  /* ── Annotations ── */
+  .ann-layer {
+    position:absolute; inset:0; pointer-events:none;
+  }
+  svg.ann-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+
+  .ann-text {
+    position:absolute;
+    font-size:18px; font-weight:700;
+    color:#ef4444;
+    font-family: Arial, sans-serif;
+    text-shadow: -1px -1px 0 #111, 1px -1px 0 #111, -1px 1px 0 #111, 1px 1px 0 #111;
+  }
+
+  /* ── Hint bar ── */
+  #hint-bar {
+    position:fixed; bottom:0; left:50px; right:0;
+    background:#1f2937; border-top:1px solid #374151;
+    padding:6px 16px; font-size:11px; color:#6b7280;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div id="clip-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px">
+        <rect x="9" y="2" width="6" height="4" rx="1"/>
+        <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/>
+      </svg>
+    </div>
+    <div id="share-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:19px;height:19px">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" y1="2" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="tb-div"></div>
+    <div class="tool-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-7 1-4 7z"/></svg>
+    </div>
+    <div class="tool-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 3 3 3 3 6"/><polyline points="6 21 3 21 3 18"/>
+        <polyline points="18 21 21 21 21 18"/><polyline points="18 3 21 3 21 6"/>
+      </svg>
+    </div>
+    <div class="tool-btn active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="19" x2="19" y2="5"/>
+        <polyline points="14 5 19 5 19 10"/>
+      </svg>
+    </div>
+    <div class="tool-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    </div>
+    <div class="tool-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+    </div>
+    <div class="tool-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 7 4 4 20 4 20 7"/>
+        <line x1="9" y1="20" x2="15" y2="20"/>
+        <line x1="12" y1="4" x2="12" y2="20"/>
+      </svg>
+    </div>
+    <div class="tb-div"></div>
+    <div id="color-btn"><div class="swatch"></div></div>
+    <div class="tb-div"></div>
+    <div class="stroke-btn"><div class="stroke-line" style="height:2px"></div></div>
+    <div class="stroke-btn"><div class="stroke-line" style="height:4px"></div></div>
+    <div class="stroke-btn active"><div class="stroke-line" style="height:7px"></div></div>
+    <div class="tb-div"></div>
+    <div class="tool-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <div class="fake-page">
+      <div class="page-nav">
+        <div class="dot" style="background:#ef4444"></div>
+        <div class="dot" style="background:#f59e0b"></div>
+        <div class="dot" style="background:#22c55e"></div>
+        <div class="url-bar">app.example.com/dashboard</div>
+      </div>
+      <div class="page-body">
+        <div class="page-h1">Q2 Performance <span>Dashboard</span></div>
+        <div class="page-p">Overview of key metrics and performance indicators for the current quarter. Updated daily.</div>
+        <div class="metric-row">
+          <div class="metric">
+            <div class="metric-val">$1.24M</div>
+            <div class="metric-label">Revenue</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">8,430</div>
+            <div class="metric-label">Active Users</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">94.2%</div>
+            <div class="metric-label">Uptime</div>
+          </div>
+          <div class="metric" style="border-color:#fca5a5; background:#fff5f5;">
+            <div class="metric-val" style="color:#ef4444">↓ 12%</div>
+            <div class="metric-label">Conversion</div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Recent activity</div>
+          <div class="page-p">New sign-ups this week are below target. The onboarding funnel shows a drop-off at step 3.</div>
+          <div class="page-p">Mobile conversion rate has declined since the last release. Investigating root cause.</div>
+        </div>
+      </div>
+
+      <!-- Annotation layer -->
+      <div class="ann-layer">
+        <svg class="ann-svg">
+          <!-- Arrow pointing to the red metric -->
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+              <path d="M0,0.5 L8,4 L0,7.5 Z" fill="#ef4444"/>
+            </marker>
+          </defs>
+          <line x1="750" y1="195" x2="888" y2="222"
+            stroke="#ef4444" stroke-width="4"
+            marker-end="url(#arrowhead)" stroke-linecap="round"/>
+          <!-- Rectangle around the section -->
+          <rect x="20" y="305" width="1060" height="130"
+            fill="none" stroke="#ef4444" stroke-width="3.5" rx="3"/>
+        </svg>
+        <div class="ann-text" style="top:165px; left:580px;">Needs attention!</div>
+        <div class="ann-text" style="top:285px; left:20px;">Root cause here</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hint bar -->
+  <div id="hint-bar">
+    Drag to draw an arrow. Press ⌘↵ to share when done.
+    <span style="float:right">⌘Z undo &nbsp;·&nbsp; Esc cancel</span>
+  </div>
+
+</body>
+</html>
