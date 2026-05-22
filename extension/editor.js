@@ -736,7 +736,7 @@ async function doShare() {
 
     hideStatus();
     const url = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
-    showUrlModal(url);
+    showUrlModal(url, folderId);
   } catch (err) {
     hideStatus();
     showError(err.message || 'Upload failed. Check the options page to verify your Google Drive connection.');
@@ -790,8 +790,11 @@ async function getOrCreateFolder(token) {
 
 // ── Upload file (multipart) ──
 async function uploadFile(token, blob, folderId) {
-  const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const name = `screenshot-${ts}.png`;
+  // e.g. "Screenshot 2024-01-15 at 12.30.45.png" — readable, no T separator
+  const now  = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const time = now.toTimeString().slice(0, 8).replace(/:/g, '.');
+  const name = `Screenshot ${date} at ${time}.png`;
   const meta = JSON.stringify({ name, parents: [folderId] });
 
   const form = new FormData();
@@ -847,9 +850,14 @@ function hideStatus() {
   statusBg.classList.remove('visible');
 }
 
-function showUrlModal(url) {
+function showUrlModal(url, folderId) {
   urlText.textContent = url;
   copyCopied.style.display = 'none';
+  // Point folder link directly to the Drive folder (not a search)
+  const folderLink = document.getElementById('drive-folder-link');
+  if (folderId) {
+    folderLink.href = `https://drive.google.com/drive/folders/${folderId}`;
+  }
   urlModal.classList.add('visible');
   // Auto-copy
   navigator.clipboard.writeText(url).catch(() => {});
