@@ -173,6 +173,25 @@ function setupEvents() {
   // Share
   document.getElementById('share-btn').addEventListener('click', doShare);
 
+  // Copy to clipboard
+  document.getElementById('clip-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('clip-btn');
+    btn.disabled = true;
+    try {
+      commitText();
+      const blob = await exportBlob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      // Brief checkmark feedback
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+      setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    } catch (err) {
+      showError('Clipboard copy failed — ' + (err.message || 'unknown error'));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   // URL modal
   document.getElementById('copy-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(urlText.textContent).then(() => {
@@ -421,14 +440,18 @@ function commitText() {
   if (!S.textPending) return;
   const val = textInput.value.trim();
   if (val) {
-    // Font size stored in image pixels (24px baseline)
+    // Scale font size so it renders as ~22 CSS pixels on screen,
+    // regardless of the underlying image resolution (handles retina captures).
+    const r          = canvas.getBoundingClientRect();
+    const imgPerCss  = canvas.width / r.width;   // e.g. 2 on a 2× retina capture
+    const fontSize   = Math.round(22 * imgPerCss);
     S.annotations.push({
       type: 'text',
       x: S.textPending.x,
       y: S.textPending.y,
       text: val,
       color: S.color,
-      fontSize: 24,
+      fontSize,
     });
     render();
   }
@@ -450,18 +473,23 @@ function render() {
   // Background image
   ctx.drawImage(S.image, 0, 0);
 
-  // Finished annotations
-  for (let i = 0; i < S.annotations.length; i++) {
-    drawAnnotation(ctx, S.annotations[i]);
-    if (i === S.selectedIdx) drawSelectionHandles(ctx, S.annotations[i]);
+  // Finished annotations (drawn first so crop overlay can sit on top of them)
+  for (const ann of S.annotations) {
+    drawAnnotation(ctx, ann);
   }
 
-  // In-progress shape preview
-  if (S.preview) drawAnnotation(ctx, S.preview);
-
-  // Crop selection (committed or in-progress)
+  // Crop overlay — dims outside the crop box and redraws image+annotations inside.
+  // Must come BEFORE preview and selection handles so those always render on top.
   const cropToDraw = S.cropPreview || (S.tool === 'crop' ? S.cropRegion : null) || S.cropRegion;
   if (cropToDraw) drawCropBox(cropToDraw);
+
+  // In-progress shape preview — always on top, even over the crop overlay
+  if (S.preview) drawAnnotation(ctx, S.preview);
+
+  // Selection handles — always on top
+  if (S.selectedIdx >= 0 && S.selectedIdx < S.annotations.length) {
+    drawSelectionHandles(ctx, S.annotations[S.selectedIdx]);
+  }
 }
 
 // ─────────────────────────────────────────────
