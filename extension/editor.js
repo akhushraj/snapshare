@@ -763,21 +763,34 @@ function getAuthToken() {
   });
 }
 
-// ── Get or create "SnapShare" folder ──
+// ── Get or create "Screenshot" folder ──
 async function getOrCreateFolder(token) {
+  // 1. Use cached ID if it still exists and isn't trashed
   const stored = await chrome.storage.sync.get('driveFolderId');
   if (stored.driveFolderId) {
-    // Verify it still exists and isn't trashed
     try {
       const r = await driveGet(token, `files/${stored.driveFolderId}?fields=id,trashed`);
       if (r.ok) {
         const d = await r.json();
         if (!d.trashed) return stored.driveFolderId;
       }
-    } catch { /* folder gone — fall through to create */ }
+    } catch { /* folder gone — fall through */ }
+    // Cached ID is stale — clear it and search fresh
+    await chrome.storage.sync.remove('driveFolderId');
   }
 
-  // Create folder
+  // 2. Search Drive for an existing "Screenshot" folder before creating a new one
+  const q   = encodeURIComponent("name='Screenshot' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const sr  = await driveGet(token, `files?q=${q}&fields=files(id)`);
+  if (sr.ok) {
+    const { files } = await sr.json();
+    if (files && files.length > 0) {
+      await chrome.storage.sync.set({ driveFolderId: files[0].id });
+      return files[0].id;
+    }
+  }
+
+  // 3. Nothing found — create it
   const r = await drivePost(token, 'files', {
     name: 'Screenshot',
     mimeType: 'application/vnd.google-apps.folder',

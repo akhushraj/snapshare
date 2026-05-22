@@ -66,9 +66,22 @@ async function fetchEmail(token) {
 }
 
 async function getOrCreateFolder(token) {
+  // 1. Use cached ID if we have one
   const stored = await chrome.storage.sync.get('driveFolderId');
   if (stored.driveFolderId) return stored.driveFolderId;
 
+  // 2. Search Drive for an existing "Screenshot" folder before creating a new one
+  const q   = encodeURIComponent("name='Screenshot' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const { files } = await res.json();
+  if (files && files.length > 0) {
+    await chrome.storage.sync.set({ driveFolderId: files[0].id });
+    return files[0].id;
+  }
+
+  // 3. Nothing found — create it
   const r = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
