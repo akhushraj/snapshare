@@ -300,6 +300,12 @@ function onMouseMove(e) {
 
   if (S.tool === 'crop') {
     S.cropPreview = normalizeRect(S.startX, S.startY, x, y);
+  } else if (S.tool === 'pen' && S.preview) {
+    // Accumulate points; skip if barely moved to avoid redundant points
+    const last = S.preview.points[S.preview.points.length - 1];
+    if (Math.hypot(x - last.x, y - last.y) > 2) {
+      S.preview.points.push({ x, y });
+    }
   } else {
     S.preview = buildAnnotation(S.tool, S.startX, S.startY, x, y);
   }
@@ -326,9 +332,12 @@ function onMouseUp(e) {
     if (dx > 4 || dy > 4) S.cropRegion = normalizeRect(S.startX, S.startY, x, y);
     S.cropPreview = null;
   } else if (S.preview) {
-    if (dx > 2 || dy > 2 || S.tool === 'arrow') {
+    // Commit pen strokes regardless of start/end distance (path may loop back)
+    const commit = dx > 2 || dy > 2 || S.tool === 'arrow' ||
+                   (S.tool === 'pen' && S.preview.points.length > 1);
+    if (commit) {
       S.annotations.push(S.preview);
-      S.selectedIdx = S.annotations.length - 1; // auto-select what was just drawn
+      S.selectedIdx = S.annotations.length - 1;
     }
     S.preview = null;
   }
@@ -347,6 +356,7 @@ function buildAnnotation(tool, x1, y1, x2, y2) {
     const cy = (y1 + y2) / 2;
     return { ...base, cx, cy, rx: Math.abs(x2 - x1) / 2, ry: Math.abs(y2 - y1) / 2 };
   }
+  if (tool === 'pen') return { ...base, points: [{ x: x1, y: y1 }] };
   return null;
 }
 
@@ -386,6 +396,18 @@ function hitTest(ann, px, py) {
     const w = ann.text.length * ann.fontSize * 0.55;
     return px >= ann.x - 4 && px <= ann.x + w && py >= ann.y - ann.fontSize && py <= ann.y + 4;
   }
+  if (ann.type === 'pen') {
+    const pts = ann.points;
+    if (pts.length === 1) return Math.hypot(px - pts[0].x, py - pts[0].y) <= pad;
+    for (let i = 1; i < pts.length; i++) {
+      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+      const len2 = dx*dx + dy*dy;
+      const t  = len2 ? Math.max(0, Math.min(1, ((px-pts[i-1].x)*dx + (py-pts[i-1].y)*dy) / len2)) : 0;
+      const cx = pts[i-1].x + t*dx, cy = pts[i-1].y + t*dy;
+      if (Math.hypot(px - cx, py - cy) <= pad) return true;
+    }
+    return false;
+  }
   return false;
 }
 
@@ -397,6 +419,7 @@ function moveAnnotation(ann, dx, dy) {
   if (ann.type === 'rect')   { ann.x  += dx; ann.y  += dy; }
   if (ann.type === 'circle') { ann.cx += dx; ann.cy += dy; }
   if (ann.type === 'text')   { ann.x  += dx; ann.y  += dy; }
+  if (ann.type === 'pen')    { ann.points = ann.points.map(p => ({ x: p.x + dx, y: p.y + dy })); }
 }
 
 // ─────────────────────────────────────────────
@@ -504,6 +527,8 @@ function drawAnnotation(c, ann) {
     else drawCircle(c, ann);
   } else if (ann.type === 'text') {
     drawText(c, ann);
+  } else if (ann.type === 'pen') {
+    drawPen(c, ann);
   }
   c.restore();
 }
@@ -581,6 +606,33 @@ function drawText(c, { x, y, text, color, fontSize }) {
   c.fillText(text, x, y);
 }
 
+function drawPen(c, { points, color, width }) {
+  if (!points || points.length === 0) return;
+  c.strokeStyle = color;
+  c.lineWidth   = width;
+  c.lineCap     = 'round';
+  c.lineJoin    = 'round';
+
+  if (points.length === 1) {
+    c.fillStyle = color;
+    c.beginPath();
+    c.arc(points[0].x, points[0].y, Math.max(width * 0.5, 2), 0, Math.PI * 2);
+    c.fill();
+    return;
+  }
+
+  // Smooth the path using quadratic bezier curves through midpoints
+  c.beginPath();
+  c.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length - 1; i++) {
+    const mx = (points[i].x + points[i + 1].x) / 2;
+    const my = (points[i].y + points[i + 1].y) / 2;
+    c.quadraticCurveTo(points[i].x, points[i].y, mx, my);
+  }
+  c.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+  c.stroke();
+}
+
 function drawCropBox(r) {
   // Compute line width in image pixels that equals ~1.5 CSS pixels on screen
   const cssScale = canvas.getBoundingClientRect().width / canvas.width;
@@ -649,6 +701,12 @@ function drawSelectionHandles(c, ann) {
   } else if (ann.type === 'text') {
     const w = ann.text.length * ann.fontSize * 0.55;
     c.strokeRect(ann.x - pad, ann.y - ann.fontSize - pad, w + pad * 2, ann.fontSize + pad * 2);
+  } else if (ann.type === 'pen') {
+    const xs = ann.points.map(p => p.x);
+    const ys = ann.points.map(p => p.y);
+    const bx = Math.min(...xs), by = Math.min(...ys);
+    const bw = Math.max(...xs) - bx,  bh = Math.max(...ys) - by;
+    c.strokeRect(bx - pad, by - pad, bw + pad * 2, bh + pad * 2);
   }
   c.restore();
 }
@@ -663,6 +721,7 @@ const HINTS = {
   rect:   'Drag to draw a rectangle. Press ⌘↵ to share when done.',
   circle: 'Drag to draw a circle or oval. Press ⌘↵ to share when done.',
   text:   'Click anywhere to place text. Press Enter to confirm, then ⌘↵ to share.',
+  pen:    'Click and drag to draw freely. Use Select to move or delete strokes.',
 };
 function updateHint() {
   hintText.textContent = HINTS[S.tool] || '';
@@ -704,6 +763,7 @@ function shiftAnnotation(ann, dx, dy) {
   if (a.type === 'rect')   { a.x  += dx; a.y  += dy; }
   if (a.type === 'circle') { a.cx += dx; a.cy += dy; }
   if (a.type === 'text')   { a.x  += dx; a.y  += dy; }
+  if (a.type === 'pen')    { a.points = a.points.map(p => ({ x: p.x + dx, y: p.y + dy })); }
   return a;
 }
 
